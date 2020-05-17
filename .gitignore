@@ -9,3 +9,9 @@ blackjack/__pycache__/__init__.cpython-37.pyc
 blackjack/__pycache__/account.cpython-37.pyc
 blackjack/__pycache__/bjack.cpython-37.pyc
 blackjack/__pycache__/deckofcards.cpython-37.pyc
+cogs/__pycache__/test.cpython-38.pyc
+cogs/__pycache__/admin.cpython-38.pyc
+cogs/__pycache__/games.cpython-38.pyc
+cogs/__pycache__/general.cpython-38.pyc
+__pycache__/bot.cpython-38.pyc
+perm.json

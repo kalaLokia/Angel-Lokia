@@ -1,111 +1,140 @@
 import os
+import json
 import random
 import discord
-import blackjack.bjack as bjack 
 
 from dotenv import load_dotenv
 from discord.ext import commands, tasks
 from itertools import cycle
 
 status = cycle(['in devils paradise', 'with kalaLokia', 'laughing at kalaLokia', 'angry over kalaLokia', 'messing kalaLokia'])
-
+with open('perm.json','r') as d:
+    lokia_family = json.load(d)
 
 load_dotenv()
 token = os.getenv('DISCORD_TOKEN')
+owner = lokia_family['owner']['id']
 
 bot = commands.Bot(command_prefix='.')
+cmdlist = []
+def refresh_cogs():
+    cmdlist.clear()
+    # Saving all cogs names to array {listcmd}
+    for filename in os.listdir('./cogs'):
+        if filename.endswith('.py'):
+            cmdlist.append(filename[:-3])
+refresh_cogs()
+activecmd = cmdlist.copy()
+activecmd.remove('admin')
 
+def lokia(ctx):
+    return ctx.author.id == owner
 
 @bot.event
 async def on_ready():
     print(f'{bot.user.name} has got ALIVE!')
     change_status.start()  # Changes her status
     
-
 @tasks.loop(minutes=3)
 async def change_status():
     await bot.change_presence(activity=discord.Game(next(status)))
 
+@bot.command(aliases=['f5'])
+async def refresh(ctx, extension=''):
+    refresh_cogs()
+    await ctx.send('system refreshed')
+
 @bot.command()
-async def clear(this, count=0):
-    if(count > 0 and count < 101):
-        await this.channel.purge(limit=count+1)
+async def load(ctx, extension=''):
+    if len(cmdlist) == len(activecmd):
+        await ctx.send('There is nothing new to load!')
+        return
+    if extension == 'all':
+        for filename in cmdlist:
+            try:
+                bot.load_extension(f'cogs.{filename}')
+            except:
+                print(f'EXCEPTION : Extension {filename} already loaded')
+        await ctx.send(f"All extensions loaded! [total : {len(cmdlist)}].")
+                
+    elif extension not in cmdlist:
+        await ctx.send("That is not a valid extension, all available extensions are: ")
+        for e in cmdlist:
+            await ctx.send(f'`{e}\n`')
+    elif extension in activecmd:
+        bot.unload_extension(f'cogs.{extension}')
+        bot.load_extension(f'cogs.{extension}')
+        await ctx.send(f'Extension `{extension}` reloaded.')
+    else:    
+        bot.load_extension(f'cogs.{extension}')
+        activecmd.append(extension)
+        await ctx.send(f'Extension `{extension}` loaded.')
 
-# @bot.command()
-# async def kick(ctx, member : discord.Member, *, reason=None):
-#     await member.kick(reason=reason)
 
-# @bot.command()
-# async def ban(ctx, member : discord.Member, *, reason=None):
-#     await member.ban(reason=reason)
-
-def check(author):
-    def inner_check(message):
-        return message.author == author
-    return inner_check
-
-
-@bot.command(name='test', help='Replies, Hi there!')
-async def on_msg(kL):
-    await kL.send('Hi there!')
-    # msg = await bot.wait_for('message', check=check(ctx.author), timeout=30)
-    # print(msg.content)
-
-@bot.command(name='bj', help='Blackjack Game')
-async def on_blackjack(self):
-    await self.send('Welcome to BlackJack Game')
-    # Tell game rules here, may be
-    await self.send('Do you want to start the game (Y/n):')
-    response = await bot.wait_for('message', check=check(self.author), timeout=60)
-    if(response.content.lower()!='y'):
-        play = False
-        await self.send('You have been exited from the game')
-    else:
-        play = True
-    # Ask for bet amount later
-    while(play):
-        bj = bjack.BlackJack()
-        bj.cards.shuffle()
-        await self.send('Cards on the table is now shuffled\n')
-        bj.playershand = list(bj.cards.initiate())
-        bj.dealershand = list(bj.cards.initiate())
-        r1 = f"{bj.player.name}'s hand:\n   {bj.playershand[0]} - {bj.playershand[1]}\nHand value: {bj.cards.handValue(bj.playershand)}\n"
-        r2 = f"\nDealer's hand:\n   {bj.dealershand[0]} - ?\n"
-        await self.send(r1+r2)
-        # Game starts now
-        if(bj.cards.handValue(bj.playershand) == 21): 
-            # If player got black jack, no need to wait for a response.
-            # Checks dealer's card and send the result
-            bj.blackjack = True
-            await self.send(bj.dealersMove())
-           
-            await self.send('Do you want to play again (Y/n) ?')
-            response = await bot.wait_for('message', check=check(self.author), timeout=60)
-            if(response.content.lower() != 'y'):
-                await self.send('Game End!')
-                play = False
-            continue
+@bot.command()
+async def unload(ctx, extension=''):
+    global activecmd
+    count = len(activecmd)
+    if count < 1:
+        await ctx.send(f"There is nothing to unload!")
+        return
+    if extension == 'all':
         
-        while(not bj.bust(bj.playershand)):
-            # While player is not got busted, wait for his response action
-            await self.send(f"{bj.player.name}'s turn: Do you want to hit or stand ?")
-            response = await bot.wait_for('message', check=check(self.author), timeout=60)
+        for filename in activecmd:
+            try:
+                bot.unload_extension(f'cogs.{filename}')
+            except:
+                print(f'EXCEPTION : Extension {filename} not even loaded yet to unload')
+        activecmd=[]
+        await ctx.send(f"{count} extensions unloaded.")
+                
+    elif extension not in activecmd:
+        await ctx.send("I don't see that extension loaded yet, all active extensions are: ")
+        for e in activecmd:
+            await ctx.send(f'`{e}\n`')
+    else:    
+        bot.unload_extension(f'cogs.{extension}')
+        activecmd.remove(extension)
+        await ctx.send(f'Extension `{extension}` unloaded.')
 
-            if(response.content == 'hit'):
-                bj.playershand.append(bj.cards.hit())
-                await self.send(bj.showCards(bj.playershand, bj.player.name))
-            elif(response.content == 'stand'):
-                await self.send(bj.dealersMove())
-                break
-            else:
-                await self.send('Please enter a valid action !')
-        else:
-            await self.send(f'{bj.player.name} has been BUSTED')
-        # Asks if player wanna play again or not
-        await self.send('Do you want to play again (Y/n) ?')
-        response = await bot.wait_for('message', check=check(self.author), timeout=60)
-        if(response.content.lower() != 'y'):
-            await self.send('Game End!')
-            play = False
-        
+@bot.command()
+async def reload(ctx, extension=''):
+    if extension == 'all':
+        for filename in activecmd:
+            try:
+                bot.unload_extension(f'cogs.{filename}')
+            except:
+                print(f'EXCEPTION : Extension {filename} not even loaded yet to unload')
+            bot.load_extension(f'cogs.{filename}')
+        await ctx.send(f"{len(activecmd)} extensions reloaded.")
+                
+    elif extension not in activecmd:
+        await ctx.send("I don't see that extension loaded yet, all active extensions are: ")
+        for e in activecmd:
+            await ctx.send(f'```{e}\n```')
+    else:    
+        bot.unload_extension(f'cogs.{extension}')
+        bot.load_extension(f'cogs.{extension}')
+        await ctx.send(f'Extension `{extension}` reloaded.')
+
+for filename in cmdlist:
+    if filename != 'admin':
+        bot.load_extension(f'cogs.{filename}')
+
+
+# def check(author):
+#     def inner_check(message):
+#         return message.author == author
+#     return inner_check
+
+# # Error handling
+# @bot.event
+# async def on_error(ctx, error):
+#     if isinstance(error, commands.MissingPermissions):
+#         await ctx.send('Missing permisions ..')
+#     elif isinstance(error, commands.MissingRole):
+#         await ctx.send('Missing roles ..')
+
+
+
 bot.run(token)
