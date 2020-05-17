@@ -5,3 +5,7 @@ blackjack/__pycache__/blackjack.cpython-38.pyc
 blackjack/__pycache__/deckofcards.cpython-38.pyc
 .vscode/settings.json
 .env
+blackjack/__pycache__/__init__.cpython-37.pyc
+blackjack/__pycache__/account.cpython-37.pyc
+blackjack/__pycache__/bjack.cpython-37.pyc
+blackjack/__pycache__/deckofcards.cpython-37.pyc

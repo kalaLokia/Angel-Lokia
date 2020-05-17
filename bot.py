@@ -4,7 +4,10 @@ import discord
 import blackjack.bjack as bjack 
 
 from dotenv import load_dotenv
-from discord.ext import commands
+from discord.ext import commands, tasks
+from itertools import cycle
+
+status = cycle(['in devils paradise', 'with kalaLokia', 'laughing at kalaLokia', 'angry over kalaLokia', 'messing kalaLokia'])
 
 
 load_dotenv()
@@ -12,20 +15,35 @@ token = os.getenv('DISCORD_TOKEN')
 
 bot = commands.Bot(command_prefix='.')
 
+
 @bot.event
 async def on_ready():
     print(f'{bot.user.name} has got ALIVE!')
+    change_status.start()  # Changes her status
+    
+
+@tasks.loop(minutes=3)
+async def change_status():
+    await bot.change_presence(activity=discord.Game(next(status)))
+
+@bot.command()
+async def clear(this, count=0):
+    if(count > 0 and count < 101):
+        await this.channel.purge(limit=count+1)
+
+# @bot.command()
+# async def kick(ctx, member : discord.Member, *, reason=None):
+#     await member.kick(reason=reason)
+
+# @bot.command()
+# async def ban(ctx, member : discord.Member, *, reason=None):
+#     await member.ban(reason=reason)
 
 def check(author):
     def inner_check(message):
         return message.author == author
     return inner_check
 
-# @bot.command(name='hello', help='Replies, Hi there!')
-# async def on_msg(ctx):
-#     await ctx.send('Hi there!')
-#     msg = await bot.wait_for('message', check=lambda message: message.author == ctx.author, timeout=5)
-#     print(msg.content)
 
 @bot.command(name='test', help='Replies, Hi there!')
 async def on_msg(kL):
